@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ubiquiti Memory Game</title>
+    <link rel="icon" href="logo.svg" type="image/svg+xml">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #000000;
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        
+        .game-board-container {
+            width: 96vw;
+            height: 96vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            grid-template-rows: repeat(5, 1fr);
+            gap: 8px;
+            width: 100%;
+            height: 100%;
+            aspect-ratio: 2/1;
+        }
+        
+        .card {
+            aspect-ratio: 1/1;
+            perspective: 1000px;
+            cursor: pointer;
+        }
+        
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            box-shadow: 0 0 15px rgba(0, 111, 255, 0.4);
+            border-radius: 10px;
+        }
+        
+        .card:hover .card-inner {
+            box-shadow: 0 0 25px rgba(0, 111, 255, 0.7);
+        }
+        
+        .card.flipped .card-inner {
+            transform: rotateY(180deg);
+            box-shadow: 0 0 20px rgba(0, 111, 255, 0.6);
+        }
+        
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+        }
+        
+        .card-front {
+            background-color: #006FFF;
+            color: white;
+        }
+        
+        .card-back {
+            background-color: #161616;
+            color: #ffffff;
+            transform: rotateY(180deg);
+            padding: 10px;
+            font-weight: bold;
+            font-size: 14px;
+            border: 1px solid #006FFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            overflow: hidden;
+        }
+        
+        .ubiquiti-logo {
+            width: 25%;
+            max-width: 60px;
+            max-height: 60px;
+            filter: brightness(0) invert(1); /* Make the logo white */
+        }
+        
+        .btn {
+            margin: 15px 0;
+            padding: 10px 20px;
+            background-color: #006FFF;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 0 10px rgba(0, 111, 255, 0.5);
+        }
+        
+        .btn:hover {
+            background-color: #0057cc;
+            box-shadow: 0 0 20px rgba(0, 111, 255, 0.8);
+        }
+        
+        .victory-message {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(22, 22, 22, 0.95);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0, 111, 255, 0.7);
+            text-align: center;
+            z-index: 100;
+            color: #ffffff;
+            border: 1px solid #006FFF;
+        }
+        
+        .victory-message h2 {
+            color: #006FFF;
+            margin-bottom: 15px;
+        }
+        
+        .matched {
+            background-color: #15344D !important;
+            box-shadow: 0 0 15px #006FFF inset !important;
+            border-color: #006FFF !important;
+        }
+        
+        /* CEO Special Effects */
+        @keyframes ceoGlow {
+            0% { box-shadow: 0 0 15px rgba(255, 215, 0, 0.7); }
+            50% { box-shadow: 0 0 30px rgba(255, 215, 0, 1); }
+            100% { box-shadow: 0 0 15px rgba(255, 215, 0, 0.7); }
+        }
+        
+        @keyframes ceoZoom {
+            0% { transform: scale(1); }
+            10% { transform: scale(1.1); }
+            20% { transform: scale(1); }
+            30% { transform: scale(1.1); }
+            40% { transform: scale(1); }
+            100% { transform: scale(1); }
+        }
+        
+        .card.flipped.ceo-card .card-inner {
+            animation: ceoGlow 2s infinite, ceoZoom 2s ease-in-out;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.9);
+            z-index: 10;
+        }
+        
+        .card.flipped.ceo-card .card-back {
+            border: 2px solid gold;
+            background: radial-gradient(circle, #1a1a1a 0%, #000000 100%);
+        }
+        
+        .ceo-matched {
+            animation: ceoGlow 2s infinite !important;
+            border: 2px solid gold !important;
+            background: radial-gradient(circle, #15344D 0%, #0a1a2a 100%) !important;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.9) inset !important;
+        }
+        
+        @media (max-width: 768px) {
+            .game-board {
+                grid-template-columns: repeat(5, 1fr);
+                grid-template-rows: repeat(10, 1fr);
+                gap: 6px;
+            }
+        }
+        
+        @media (min-width: 1200px) and (min-aspect-ratio: 16/9) {
+            .game-board {
+                grid-template-columns: repeat(10, 1fr);
+                grid-template-rows: repeat(5, 1fr);
+                width: auto;
+                height: 94vh;
+            }
+        }
+        
+        @media (max-aspect-ratio: 1/1) {
+            .game-board {
+                grid-template-columns: repeat(5, 1fr);
+                grid-template-rows: repeat(10, 1fr);
+                width: 94vw;
+                height: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-board-container">
+        <div class="game-board" id="game-board">
+            <!-- Cards will be generated here by JavaScript -->
+        </div>
+    </div>
+    
+    <div class="victory-message" id="victory-message">
+        <h2>Congratulations!</h2>
+        <p>You've matched all Ubiquiti products in <span id="final-moves">0</span> moves!</p>
+        <button class="btn" id="play-again-btn">Play Again</button>
+    </div>
+    
+    <script>
+        // Ubiquiti product image files
+        const productPairs = [
+            { id: 1, img: '1.webp' },
+            { id: 2, img: '2.webp' },
+            { id: 3, img: '3.webp' },
+            { id: 4, img: '4.webp' },
+            { id: 5, img: '5.webp' },
+            { id: 6, img: '6.webp' },
+            { id: 7, img: '7.webp' },
+            { id: 8, img: '8.webp' },
+            { id: 9, img: '9.webp' },
+            { id: 10, img: '10.webp' },
+            { id: 11, img: '11.webp' },
+            { id: 12, img: '12.webp' },
+            { id: 13, img: '13.webp' },
+            { id: 14, img: '14.webp' },
+            { id: 15, img: '15.webp' },
+            { id: 16, img: '16.webp' },
+            { id: 17, img: '17.webp' },
+            { id: 18, img: '18.webp' },
+            { id: 19, img: '19.webp' },
+            { id: 20, img: '20.webp' },
+            { id: 21, img: '21.webp' },
+            { id: 22, img: '22.webp' },
+            { id: 23, img: '23.webp' },
+            { id: 24, img: '24.webp' },
+            { id: 25, img: 'robert.webp' }
+        ];
+        
+        // Game state variables
+        let selectedCards = [];
+        let moves = 0;
+        let pairsFound = 0;
+        let totalPairs = productPairs.length;
+        let gameActive = true;
+        let processingCards = false; // Flag to prevent multiple card selections during processing
+        
+        // DOM elements
+        const victoryMessage = document.getElementById('victory-message');
+        const finalMovesElement = document.getElementById('final-moves');
+        
+        // Shuffle array using Fisher-Yates algorithm
+        function shuffleArray(array) {
+            const newArray = [...array];
+            for (let i = newArray.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+            }
+            return newArray;
+        }
+        
+        // Create and render the game board
+        function createGameBoard() {
+            // Get reference to the game board
+            const gameBoard = document.getElementById('game-board');
+            if (!gameBoard) return;
+            
+            // Clear the game board
+            gameBoard.innerHTML = '';
+            
+            // Create pairs of products
+            let gameProducts = [];
+            productPairs.forEach(product => {
+                // Add each product twice (to create pairs)
+                gameProducts.push(product);
+                gameProducts.push(product);
+            });
+            
+            // Shuffle the products
+            gameProducts = shuffleArray(gameProducts);
+            
+            // Limit to 50 cards (25 pairs) if there are more
+            gameProducts = gameProducts.slice(0, 50);
+            
+            // Create each card
+            gameProducts.forEach((product, index) => {
+                const card = document.createElement('div');
+                card.classList.add('card');
+                card.dataset.index = index;
+                card.dataset.product = product.id.toString();
+                
+                // Check if this is the CEO card
+                const isCEO = product.id === 25; // CEO Robert Pera is id 25
+                if (isCEO) {
+                    card.classList.add('ceo-card');
+                }
+                
+                // Use webp image files
+                const imagePath = `cards/${product.img}`;
+                
+                card.innerHTML = `
+                    <div class="card-inner">
+                        <div class="card-front">
+                            <img src="logo.svg" class="ubiquiti-logo" alt="Ubiquiti Logo">
+                        </div>
+                        <div class="card-back">
+                            <img src="${imagePath}" alt="Ubiquiti Product ${product.id}" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                        </div>
+                    </div>
+                `;
+                
+                card.addEventListener('click', handleCardClick);
+                gameBoard.appendChild(card);
+            });
+        }
+        
+        // Handle card click
+        function handleCardClick() {
+            const card = this;
+            
+            // Ignore clicks if:
+            // 1. Game is not active
+            // 2. Card is already flipped
+            // 3. This card is being compared
+            // 4. Processing is happening (global lock)
+            if (!gameActive || 
+                card.classList.contains('flipped') || 
+                card.classList.contains('comparing') ||
+                processingCards) {
+                return;
+            }
+            
+            // If two cards are already flipped but not yet processed
+            const comparingCards = document.querySelectorAll('.comparing');
+            if (comparingCards.length > 0) {
+                // Set processing flag
+                processingCards = true;
+                
+                // First clear the comparing cards
+                comparingCards.forEach(c => {
+                    c.classList.remove('flipped', 'comparing');
+                });
+                selectedCards = [];
+                
+                // Then flip this card after a short delay
+                setTimeout(() => {
+                    processingCards = false;
+                    flipCard(card);
+                }, 100);
+                return;
+            }
+            
+            // Normal flip case
+            flipCard(card);
+        }
+        
+        // Function to flip a card and handle its state
+        function flipCard(card) {
+            // Safety check - don't flip if we already have 2 cards
+            if (selectedCards.length >= 2) return;
+            
+            // Flip the card
+            card.classList.add('flipped');
+            selectedCards.push(card);
+            
+            // Check if CEO card was revealed
+            if (card.classList.contains('ceo-card')) {
+                playCEOEffect();
+            }
+            
+            // If we have 2 cards selected, check for a match
+            if (selectedCards.length === 2) {
+                // Set processing flag to prevent new card selections during processing
+                processingCards = true;
+                
+                // Increment move counter
+                moves++;
+                
+                const [card1, card2] = selectedCards;
+                
+                // Mark cards as being compared
+                card1.classList.add('comparing');
+                card2.classList.add('comparing');
+                
+                // Check if the cards match
+                if (card1.dataset.product === card2.dataset.product) {
+                    // Cards match!
+                    setTimeout(() => {
+                        // Check if this is a CEO match
+                        if (card1.classList.contains('ceo-card')) {
+                            card1.querySelector('.card-back').classList.add('ceo-matched');
+                            card2.querySelector('.card-back').classList.add('ceo-matched');
+                            playCEOMatchEffect();
+                        } else {
+                            card1.querySelector('.card-back').classList.add('matched');
+                            card2.querySelector('.card-back').classList.add('matched');
+                        }
+                        
+                        // Remove comparison class
+                        card1.classList.remove('comparing');
+                        card2.classList.remove('comparing');
+                        
+                        // Remove click event listeners
+                        card1.removeEventListener('click', handleCardClick);
+                        card2.removeEventListener('click', handleCardClick);
+                        
+                        // Increment pairs found
+                        pairsFound++;
+                        
+                        // Check for victory
+                        if (pairsFound === totalPairs) {
+                            gameActive = false;
+                            finalMovesElement.textContent = moves;
+                            victoryMessage.style.display = 'block';
+                        }
+                        
+                        // Reset selected cards array and processing flag
+                        selectedCards = [];
+                        processingCards = false;
+                        
+                    }, 500);
+                } else {
+                    // Cards don't match, flip them back
+                    setTimeout(() => {
+                        card1.classList.remove('flipped', 'comparing');
+                        card2.classList.remove('flipped', 'comparing');
+                        
+                        // Reset selected cards array and processing flag
+                        selectedCards = [];
+                        processingCards = false;
+                        
+                    }, 1000);
+                }
+            }
+        }
+        
+        // Special effect for CEO card reveal
+        function playCEOEffect() {
+            // Add any additional special effects here
+            console.log("CEO card revealed!");
+        }
+        
+        // Special effect for CEO card match
+        function playCEOMatchEffect() {
+            // Add any additional special effects for a CEO match
+            console.log("CEO match found!");
+        }
+        
+        // Reset the game
+        function resetGame() {
+            // Reset game state
+            selectedCards = [];
+            moves = 0;
+            pairsFound = 0;
+            gameActive = true;
+            processingCards = false;
+            
+            // Hide victory message
+            if (victoryMessage) {
+                victoryMessage.style.display = 'none';
+            }
+            
+            // Create a new game board
+            createGameBoard();
+            
+            // Adjust grid layout
+            adjustGridLayout();
+        }
+        
+        // Adjust grid layout based on screen dimensions
+        function adjustGridLayout() {
+            const gameBoard = document.getElementById('game-board');
+            if (!gameBoard) return;
+            
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            const aspectRatio = windowWidth / windowHeight;
+            
+            if (aspectRatio > 1.5) {
+                // Widescreen
+                gameBoard.style.gridTemplateColumns = 'repeat(10, 1fr)';
+                gameBoard.style.gridTemplateRows = 'repeat(5, 1fr)';
+            } else if (aspectRatio > 1) {
+                // Standard landscape
+                gameBoard.style.gridTemplateColumns = 'repeat(7, 1fr)';
+                gameBoard.style.gridTemplateRows = 'repeat(8, 1fr)';
+            } else if (aspectRatio > 0.75) {
+                // Nearly square
+                gameBoard.style.gridTemplateColumns = 'repeat(5, 1fr)';
+                gameBoard.style.gridTemplateRows = 'repeat(10, 1fr)';
+            } else {
+                // Portrait
+                gameBoard.style.gridTemplateColumns = 'repeat(4, 1fr)';
+                gameBoard.style.gridTemplateRows = 'repeat(13, 1fr)';
+            }
+        }
+        
+        // Add event listeners and initialize
+        function initGame() {
+            createGameBoard();
+            
+            // Add an event listener for victory screen
+            const playAgainBtn = document.getElementById('play-again-btn');
+            if (playAgainBtn) {
+                playAgainBtn.addEventListener('click', resetGame);
+            }
+            
+            // Adjust grid layout based on screen dimensions
+            adjustGridLayout();
+            
+            // Listen for window resize and adjust grid
+            window.addEventListener('resize', adjustGridLayout);
+        }
+        
+        // Check if document is already loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initGame);
+        } else {
+            initGame();
+        }
+    </script>
+</body>
+</html>
