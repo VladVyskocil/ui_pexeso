@@ -1,876 +1,287 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="cs">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Ubiquiti Memory Game</title>
     <link rel="icon" href="logo.svg" type="image/svg+xml">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --ui-blue: #006FFF;
+            --ui-dark-bg: #0A0A0A;
+            --ui-card-back: #161616;
+            --ui-gold: #FFD700;
+            --gap-size: 8px;
         }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
+        html, body {
+            width: 100%; height: 100%; overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #000000;
-            color: #ffffff;
-            margin: 0;
-            padding: 0;
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: var(--ui-dark-bg); color: #ffffff;
+            display: flex; justify-content: center; align-items: center;
+            transition: background-color 0.5s ease;
         }
         
-        .game-board-container {
-            width: 96vw;
-            height: 96vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+        .screen {
+            width: 100%; height: 100%; position: absolute; top: 0; left: 0;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            opacity: 0; visibility: hidden; transition: opacity 0.5s ease, visibility 0s linear 0.5s;
         }
+        .screen.active { opacity: 1; visibility: visible; transition: opacity 0.5s ease; }
         
-        .game-board {
-            display: grid;
-            grid-template-columns: repeat(10, 1fr);
-            grid-template-rows: repeat(5, 1fr);
-            gap: 8px;
-            width: 100%;
-            height: 100%;
-            aspect-ratio: 2/1;
+        #start-screen { text-align: center; padding: 1rem; }
+        .start-screen-logo { width: 100px; height: 100px; margin-bottom: 2rem; filter: brightness(0) invert(1); }
+        #start-screen h1 {
+            color: var(--ui-blue); font-size: clamp(2.2rem, 5vw, 3rem); margin-bottom: 0.5rem;
+            text-shadow: 0 0 15px rgba(0, 111, 255, 0.5);
         }
+        #start-screen p { margin-bottom: 2rem; font-size: 1.1rem; color: #aaa; }
+        .difficulty-options { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; }
         
-        .card {
-            aspect-ratio: 1/1;
-            perspective: 1000px;
-            cursor: pointer;
+        .author-credit {
+            position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%);
+            font-size: 0.9rem; color: #888;
         }
-        
+        .author-credit a {
+            color: inherit; text-decoration: none; display: inline-flex;
+            align-items: center; gap: 8px; transition: color 0.3s ease;
+        }
+        .author-credit a:hover { color: #fff; }
+        .author-credit svg { width: 16px; height: 16px; fill: currentColor; }
+
+        #game-container { padding: 2.5rem; }
+        .game-board { display: grid; gap: var(--gap-size); }
+
+        .card { perspective: 1000px; cursor: pointer; }
         .card-inner {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            text-align: center;
-            transition: transform 0.6s;
-            transform-style: preserve-3d;
-            box-shadow: 0 0 15px rgba(0, 111, 255, 0.4);
-            border-radius: 10px;
+            position: relative; width: 100%; height: 100%;
+            transition: transform 0.6s, box-shadow 0.3s; transform-style: preserve-3d;
+            box-shadow: 0 0 10px rgba(0, 111, 255, 0.3); border-radius: 8px;
         }
-        
-        .card:hover .card-inner {
-            box-shadow: 0 0 25px rgba(0, 111, 255, 0.7);
-        }
-        
-        .card.flipped .card-inner {
-            transform: rotateY(180deg);
-            box-shadow: 0 0 20px rgba(0, 111, 255, 0.6);
-        }
-        
+        .card:hover .card-inner { box-shadow: 0 0 20px rgba(0, 111, 255, 0.6); }
+        .card.flipped .card-inner { transform: rotateY(180deg); }
         .card-front, .card-back {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            -webkit-backface-visibility: hidden;
-            backface-visibility: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 10px;
+            position: absolute; width: 100%; height: 100%; backface-visibility: hidden;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; overflow: hidden;
         }
-        
-        .card-front {
-            background-color: #006FFF;
-            color: white;
-        }
-        
+        .card-front { background-color: var(--ui-blue); }
         .card-back {
-            background-color: #161616;
-            color: #ffffff;
-            transform: rotateY(180deg);
-            padding: 10px;
-            font-weight: bold;
-            font-size: 14px;
-            border: 1px solid #006FFF;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            overflow: hidden;
+            background-color: var(--ui-card-back); transform: rotateY(180deg);
+            padding: 10%; border: 1px solid var(--ui-blue);
         }
-        
-        .ubiquiti-logo {
-            width: 25%;
-            max-width: 60px;
-            max-height: 60px;
-            filter: brightness(0) invert(1); /* Make the logo white */
-        }
+        .card-back img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .ubiquiti-logo { width: 40%; height: 40%; object-fit: contain; filter: brightness(0) invert(1); }
         
         .btn {
-            margin: 15px 0;
-            padding: 10px 20px;
-            background-color: #006FFF;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 1rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
-            box-shadow: 0 0 10px rgba(0, 111, 255, 0.5);
+            margin: 5px; padding: 12px 24px; background-color: var(--ui-blue); color: white; border: none;
+            border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 4px 15px rgba(0, 111, 255, 0.4);
         }
+        .btn:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0, 111, 255, 0.6); }
         
-        .btn:hover {
-            background-color: #0057cc;
-            box-shadow: 0 0 20px rgba(0, 111, 255, 0.8);
+        .in-game-ui { position: fixed; top: 1.5rem; left: 1.5rem; z-index: 200; }
+        .btn-exit {
+            background-color: rgba(30, 30, 30, 0.7); border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(8px); font-size: 0.9rem; padding: 8px 16px; min-width: auto;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
         }
+        .btn-exit:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); }
         
-        .victory-message {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: rgba(22, 22, 22, 0.95);
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 0 30px rgba(0, 111, 255, 0.7);
+        #end-screen .content {
             text-align: center;
-            z-index: 100;
-            color: #ffffff;
-            border: 1px solid #006FFF;
-            width: 80%;
-            max-width: 500px;
+            animation: fadeInScaleUp 0.8s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
         }
-        
-        .victory-message h2 {
-            color: #006FFF;
-            margin-bottom: 15px;
+        #end-screen h2 {
+            font-size: clamp(3rem, 10vw, 6rem);
+            color: var(--ui-gold);
+            text-shadow: 0 0 30px var(--ui-gold);
+            margin-bottom: 1rem;
         }
-        
-        .scoreboard {
-            margin: 20px 0;
-            padding: 15px;
-            background-color: rgba(0, 111, 255, 0.1);
-            border-radius: 8px;
-            text-align: left;
+        .end-screen-stats { margin-bottom: 2.5rem; color: #ccc; }
+        .end-screen-stats p { font-size: 1.2rem; margin: 0.5rem 0; }
+        .end-screen-stats .difficulty { text-transform: capitalize; font-weight: bold; color: var(--ui-blue); }
+        .end-screen-actions { display: flex; gap: 1rem; }
+        @keyframes fadeInScaleUp {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
         }
-        
-        .scoreboard-row {
-            display: flex;
-            justify-content: space-between;
-            margin: 8px 0;
-            padding-bottom: 8px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
+        .matched { background-color: #15344D !important; box-shadow: 0 0 15px var(--ui-blue) inset !important; }
+        @keyframes ceoGlow { 50% { box-shadow: 0 0 25px var(--ui-gold); } }
+        .card.flipped.ceo-card .card-inner { animation: ceoGlow 2s infinite; }
+        .card.flipped.ceo-card .card-back { border: 2px solid var(--ui-gold); }
+        .ceo-matched { box-shadow: 0 0 30px var(--ui-gold) inset !important; border-color: var(--ui-gold) !important; }
+
+        .ball {
+            position: fixed; font-size: 64px; pointer-events: none;
+            will-change: transform; z-index: 999;
         }
-        
-        .scoreboard-label {
-            font-weight: bold;
-            color: #006FFF;
-        }
-        
-        .location-input {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-            justify-content: center;
-        }
-        
-        .location-input input {
-            padding: 8px;
-            border-radius: 4px;
-            border: 1px solid #006FFF;
-            background-color: rgba(0, 0, 0, 0.7);
-            color: white;
-        }
-        
-        .location-input button {
-            padding: 8px 12px;
-            background-color: #006FFF;
-            border: none;
-            border-radius: 4px;
-            color: white;
-            cursor: pointer;
-        }
-        
-        .games-history {
-            margin-top: 15px;
-            max-height: 150px;
-            overflow-y: auto;
-            background-color: rgba(0, 0, 0, 0.3);
-            border-radius: 4px;
-            padding: 10px;
-        }
-        
-        .history-title {
-            color: #006FFF;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-        
-        .history-entry {
-            padding: 5px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            font-size: 0.9rem;
-        }
-        
-        .matched {
-            background-color: #15344D !important;
-            box-shadow: 0 0 15px #006FFF inset !important;
-            border-color: #006FFF !important;
-        }
-        
-        /* CEO Special Effects */
-        @keyframes ceoGlow {
-            0% { box-shadow: 0 0 15px rgba(255, 215, 0, 0.7); }
-            50% { box-shadow: 0 0 30px rgba(255, 215, 0, 1); }
-            100% { box-shadow: 0 0 15px rgba(255, 215, 0, 0.7); }
-        }
-        
-        @keyframes ceoZoom {
-            0% { transform: scale(1); }
-            10% { transform: scale(1.1); }
-            20% { transform: scale(1); }
-            30% { transform: scale(1.1); }
-            40% { transform: scale(1); }
-            100% { transform: scale(1); }
-        }
-        
-        .card.flipped.ceo-card .card-inner {
-            animation: ceoGlow 2s infinite, ceoZoom 2s ease-in-out;
-            box-shadow: 0 0 30px rgba(255, 215, 0, 0.9);
-            z-index: 10;
-        }
-        
-        .card.flipped.ceo-card .card-back {
-            border: 2px solid gold;
-            background: radial-gradient(circle, #1a1a1a 0%, #000000 100%);
-        }
-        
-        .ceo-matched {
-            animation: ceoGlow 2s infinite !important;
-            border: 2px solid gold !important;
-            background: radial-gradient(circle, #15344D 0%, #0a1a2a 100%) !important;
-            box-shadow: 0 0 30px rgba(255, 215, 0, 0.9) inset !important;
-        }
-        
-        @media (max-width: 768px) {
-            .game-board {
-                grid-template-columns: repeat(5, 1fr);
-                grid-template-rows: repeat(10, 1fr);
-                gap: 6px;
-            }
-        }
-        
-        @media (min-width: 1200px) and (min-aspect-ratio: 16/9) {
-            .game-board {
-                grid-template-columns: repeat(10, 1fr);
-                grid-template-rows: repeat(5, 1fr);
-                width: auto;
-                height: 94vh;
-            }
-        }
-        
-        @media (max-aspect-ratio: 1/1) {
-            .game-board {
-                grid-template-columns: repeat(5, 1fr);
-                grid-template-rows: repeat(10, 1fr);
-                width: 94vw;
-                height: auto;
-            }
+
+        @media print {
+            body { background-color: #fff !important; }
+            #start-screen, #game-container, .in-game-ui, #end-screen { display: none !important; }
         }
     </style>
 </head>
 <body>
-    <div class="game-board-container">
-        <div class="game-board" id="game-board">
-            <!-- Cards will be generated here by JavaScript -->
+
+    <div class="screen active" id="start-screen">
+        <img src="logo.svg" alt="Ubiquiti Logo" class="start-screen-logo">
+        <h1>Memory Game</h1>
+        <p>Zvolte obtížnost:</p>
+        <div class="difficulty-options">
+            <button class="btn" data-difficulty="Easy">Lehká (5x4)</button>
+            <button class="btn" data-difficulty="Medium">Střední (6x5)</button>
+            <button class="btn" data-difficulty="Hard">Těžká (8x5)</button>
+            <button class="btn" data-difficulty="Ultra">Ultra (10x5)</button>
+        </div>
+        <div class="author-credit">
+            A tribute game by 
+            <a href="https://www.linkedin.com/in/vladimirvyskocil/" target="_blank" rel="noopener noreferrer">
+                ex-Ubiquiti Vlad
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+                </svg>
+            </a>
         </div>
     </div>
+
+    <div class="screen" id="game-container">
+        <div class="game-board" id="game-board"></div>
+    </div>
     
-    <div class="victory-message" id="victory-message">
-        <h2>Congratulations!</h2>
-        <p>You've matched all Ubiquiti products!</p>
-        
-        <div class="scoreboard">
-            <div class="scoreboard-row">
-                <span class="scoreboard-label">Time:</span>
-                <span id="final-time">0:00</span>
+    <div class="in-game-ui" id="in-game-ui" style="display: none;">
+        <button class="btn btn-exit" id="exit-game-btn">Hlavní menu</button>
+    </div>
+
+    <div class="screen" id="end-screen">
+        <div class="content">
+            <h2>You Win!</h2>
+            <div class="end-screen-stats">
+                <p>Obtížnost: <span id="final-difficulty" class="difficulty"></span></p>
+                <p>Čas: <span id="final-time"></span></p>
             </div>
-            <div class="scoreboard-row">
-                <span class="scoreboard-label">Moves:</span>
-                <span id="final-moves">0</span>
-            </div>
-            <div class="scoreboard-row">
-                <span class="scoreboard-label">Location:</span>
-                <span id="player-location">Earth 🌎</span>
-            </div>
-            <div class="scoreboard-row">
-                <span class="scoreboard-label">Games Played:</span>
-                <span id="games-played">0</span>
+            <div class="end-screen-actions">
+                <button class="btn" id="play-again-btn">Hrát znovu</button>
+                <button class="btn" id="main-menu-btn">Hlavní menu</button>
             </div>
         </div>
-        
-        <div class="games-history">
-            <div class="history-title">Previous Games</div>
-            <div id="history-list">
-                <!-- History entries will be populated here -->
-                <div class="history-entry">No previous games</div>
-            </div>
-        </div>
-        
-        <button class="btn" id="play-again-btn">Play Again</button>
     </div>
     
     <script>
-        // Ubiquiti product image files
-        const productPairs = [
-            { id: 1, img: '1.webp' },
-            { id: 2, img: '2.webp' },
-            { id: 3, img: '3.webp' },
-            { id: 4, img: '4.webp' },
-            { id: 5, img: '5.webp' },
-            { id: 6, img: '6.webp' },
-            { id: 7, img: '7.webp' },
-            { id: 8, img: '8.webp' },
-            { id: 9, img: '9.webp' },
-            { id: 10, img: '10.webp' },
-            { id: 11, img: '11.webp' },
-            { id: 12, img: '12.webp' },
-            { id: 13, img: '13.webp' },
-            { id: 14, img: '14.webp' },
-            { id: 15, img: '15.webp' },
-            { id: 16, img: '16.webp' },
-            { id: 17, img: '17.webp' },
-            { id: 18, img: '18.webp' },
-            { id: 19, img: '19.webp' },
-            { id: 20, img: '20.webp' },
-            { id: 21, img: '21.webp' },
-            { id: 22, img: '22.webp' },
-            { id: 23, img: '23.webp' },
-            { id: 24, img: '24.webp' },
-            { id: 25, img: 'robert.webp' }
+        const allProductPairs = [
+            { id: 1, img: '1.webp' }, { id: 2, img: '2.webp' }, { id: 3, img: '3.webp' }, { id: 4, img: '4.webp' }, { id: 5, img: '5.webp' }, { id: 6, img: '6.webp' }, { id: 7, img: '7.webp' }, { id: 8, img: '8.webp' }, { id: 9, img: '9.webp' }, { id: 10, img: '10.webp' }, { id: 11, img: '11.webp' }, { id: 12, img: '12.webp' }, { id: 13, img: '13.webp' }, { id: 14, img: '14.webp' }, { id: 15, img: '15.webp' }, { id: 16, img: '16.webp' }, { id: 17, img: '17.webp' }, { id: 18, img: '18.webp' }, { id: 19, img: '19.webp' }, { id: 20, img: '20.webp' }, { id: 21, img: '21.webp' }, { id: 22, img: '22.webp' }, { id: 23, img: '23.webp' }, { id: 24, img: '24.webp' }, { id: 25, img: 'robert.webp' }
         ];
+        const difficultyMap = { 'Easy': { pairs: 10, cols: 5, rows: 4 }, 'Medium': { pairs: 15, cols: 6, rows: 5 }, 'Hard': { pairs: 20, cols: 8, rows: 5 }, 'Ultra': { pairs: 25, cols: 10, rows: 5 } };
         
-        // Game state variables
-        let selectedCards = [];
-        let moves = 0;
-        let pairsFound = 0;
-        let totalPairs = productPairs.length;
-        let gameActive = true;
-        let processingCards = false; // Flag to prevent multiple card selections during processing
-        let gameStartTime = null;
-        let gameTimer = null;
-        let elapsedSeconds = 0;
-        let playerLocation = { city: "Unknown", country: "Unknown", countryCode: "" };
-        let gamesPlayed = 0;
-        let gameHistory = [];
+        let selectedCards = [], moves = 0, pairsFound = 0;
+        let gameActive = false, processingCards = false;
+        let currentDifficultyConfig = null, currentDifficultyKey = null;
+        let flipBackTimeoutId = null;
+        let startTime = null;
         
-        // DOM elements
-        const victoryMessage = document.getElementById('victory-message');
-        const finalMovesElement = document.getElementById('final-moves');
-        const finalTimeElement = document.getElementById('final-time');
-        const playerLocationElement = document.getElementById('player-location');
-        const gamesPlayedElement = document.getElementById('games-played');
+        const gameBoard = document.getElementById('game-board'), gameContainer = document.getElementById('game-container'), startScreen = document.getElementById('start-screen'), endScreen = document.getElementById('end-screen'), inGameUI = document.getElementById('in-game-ui'), exitGameBtn = document.getElementById('exit-game-btn'), playAgainBtn = document.getElementById('play-again-btn'), mainMenuBtn = document.getElementById('main-menu-btn'), finalDifficultyEl = document.getElementById('final-difficulty'), finalTimeEl = document.getElementById('final-time');
         
-        // Shuffle array using Fisher-Yates algorithm
-        function shuffleArray(array) {
-            const newArray = [...array];
-            for (let i = newArray.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
-            }
-            return newArray;
-        }
-        
-        // Start the game timer
-        function startTimer() {
-            if (gameTimer) {
-                clearInterval(gameTimer);
-            }
-            
-            gameStartTime = new Date();
-            elapsedSeconds = 0;
-            
-            gameTimer = setInterval(() => {
-                const now = new Date();
-                elapsedSeconds = Math.floor((now - gameStartTime) / 1000);
-                
-                // If we have the timer element in the UI, update it
-                const timerElement = document.getElementById('timer');
-                if (timerElement) {
-                    timerElement.textContent = formatTime(elapsedSeconds);
+        function spawnEmojiBalls(count = 20) {
+            const balls = []; const BALL_SIZE = 64;
+            for (let i = 0; i < count; i++) { const el = document.createElement('div'); el.className = 'ball'; el.textContent = '🏀'; document.body.appendChild(el); balls.push({ el, x: Math.random() * (window.innerWidth - BALL_SIZE), y: -BALL_SIZE, vx: (Math.random() - 0.5) * 8, vy: -(Math.random() * 8 + 8), rotation: Math.random() * 360, vr: (Math.random() - 0.5) * 8, life: 1.0, decay: 0.003 }); }
+            function animate() {
+                let active = false;
+                for (const b of balls) {
+                    b.x += b.vx; b.y += b.vy; b.vy += 0.4; b.rotation += b.vr; b.life -= b.decay;
+                    if (b.x < 0) { b.x = 0; b.vx *= -0.8; }
+                    if (b.x > window.innerWidth - BALL_SIZE) { b.x = window.innerWidth - BALL_SIZE; b.vx *= -0.8; }
+                    if (b.y > window.innerHeight - BALL_SIZE) { b.y = window.innerHeight - BALL_SIZE; if (Math.abs(b.vy) > 1) { b.vy *= -0.65; b.vx *= 0.95; b.vr *= 0.9; } else { b.vy = 0; } }
+                    b.el.style.opacity = b.life < 0.3 ? (b.life / 0.3) : 1;
+                    b.el.style.transform = `translate(${b.x}px, ${b.y}px) rotate(${b.rotation}deg)`;
+                    if (b.life > 0) { active = true; } else { b.el.remove(); }
                 }
-            }, 1000);
-        }
-        
-        // Format seconds into MM:SS
-        function formatTime(seconds) {
-            const minutes = Math.floor(seconds / 60);
-            const remainingSeconds = seconds % 60;
-            return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-        }
-        
-        // Stop the game timer
-        function stopTimer() {
-            if (gameTimer) {
-                clearInterval(gameTimer);
-                gameTimer = null;
+                if (active) requestAnimationFrame(animate);
             }
+            animate();
         }
-        
-        // Try to get player's location using ip-api.com
-        function getPlayerLocation() {
-            try {
-                // Use HTTPS API endpoint for better compatibility
-                fetch('https://ipapi.co/json/')
-                    .then(response => response.json())
-                    .then(data => {
-                        playerLocation = {
-                            city: data.city || 'Unknown',
-                            country: data.country_name || 'Unknown',
-                            countryCode: data.country_code || ''
-                        };
-                        
-                        // Update location display if victory screen is showing
-                        if (playerLocationElement) {
-                            const flagEmoji = playerLocation.countryCode ? 
-                                getFlagEmoji(playerLocation.countryCode) : '';
-                            
-                            playerLocationElement.textContent = 
-                                `${playerLocation.city}, ${playerLocation.country} ${flagEmoji}`;
-                        }
-                    })
-                    .catch(error => {
-                        console.log('Location API unavailable, using fallback');
-                        playerLocationElement.textContent = 'Earth 🌎';
-                    });
-            } catch (error) {
-                console.log('Error in location fetch, using fallback');
-                playerLocationElement.textContent = 'Earth 🌎';
-            }
+        function resizeGameBoard() {
+            if (!gameActive || !currentDifficultyConfig) return;
+            const { cols, rows } = currentDifficultyConfig; const containerWidth = gameContainer.clientWidth, containerHeight = gameContainer.clientHeight; const gridAspectRatio = cols / rows; let boardWidth, boardHeight;
+            if ((containerWidth / containerHeight) > gridAspectRatio) { boardHeight = containerHeight; boardWidth = boardHeight * gridAspectRatio; } else { boardWidth = containerWidth; boardHeight = boardWidth / gridAspectRatio; }
+            gameBoard.style.width = `${boardWidth}px`; gameBoard.style.height = `${boardHeight}px`;
         }
-        
-        // Convert country code to flag emoji
-        function getFlagEmoji(countryCode) {
-            const codePoints = countryCode
-                .toUpperCase()
-                .split('')
-                .map(char => 127397 + char.charCodeAt());
-                
-            return String.fromCodePoint(...codePoints);
-        }
-        
-        // Load games history from localStorage (with fallback)
-        function loadGameHistory() {
-            try {
-                // Check if localStorage is available in a safe way
-                if (window.localStorage !== undefined) {
-                    try {
-                        localStorage.setItem('test', 'test');
-                        localStorage.removeItem('test');
-                        
-                        const savedHistory = localStorage.getItem('ubiquitiMemoryGameHistory');
-                        const savedGamesPlayed = localStorage.getItem('ubiquitiMemoryGamesPlayed');
-                        
-                        if (savedHistory) {
-                            gameHistory = JSON.parse(savedHistory);
-                        }
-                        
-                        if (savedGamesPlayed) {
-                            gamesPlayed = parseInt(savedGamesPlayed, 10);
-                        }
-                    } catch (e) {
-                        console.log('localStorage not accessible');
-                    }
-                }
-                
-                // Update UI
-                if (gamesPlayedElement) {
-                    gamesPlayedElement.textContent = gamesPlayed;
-                }
-                
-                updateHistoryDisplay();
-            } catch (error) {
-                console.log('History feature unavailable');
-            }
-        }
-        
-        // Save current game to history (with location info)
-        function saveGameToHistory() {
-            try {
-                // Increment games played
-                gamesPlayed++;
-                
-                // Create game record with location
-                const gameRecord = {
-                    date: new Date().toISOString(),
-                    time: elapsedSeconds,
-                    formattedTime: formatTime(elapsedSeconds),
-                    moves: moves,
-                    location: `${playerLocation.city}, ${playerLocation.country}`
-                };
-                
-                // Add to history (keep only last 10 games)
-                gameHistory.unshift(gameRecord);
-                if (gameHistory.length > 10) {
-                    gameHistory = gameHistory.slice(0, 10);
-                }
-                
-                // Try to save to localStorage if available
-                if (window.localStorage !== undefined) {
-                    try {
-                        localStorage.setItem('ubiquitiMemoryGameHistory', JSON.stringify(gameHistory));
-                        localStorage.setItem('ubiquitiMemoryGamesPlayed', gamesPlayed.toString());
-                    } catch (e) {
-                        console.log('localStorage not writable');
-                    }
-                }
-                
-                // Update UI
-                if (gamesPlayedElement) {
-                    gamesPlayedElement.textContent = gamesPlayed;
-                }
-                
-                updateHistoryDisplay();
-            } catch (error) {
-                console.log('Error saving game');
-            }
-        }
-        
-        // Update the history display in the victory screen
-        function updateHistoryDisplay() {
-            const historyList = document.getElementById('history-list');
-            if (!historyList) return;
-            
-            if (gameHistory.length === 0) {
-                historyList.innerHTML = '<div class="history-entry">No previous games</div>';
-                return;
-            }
-            
-            historyList.innerHTML = '';
-            
-            // Show at most 10 entries
-            const displayHistory = gameHistory.slice(0, 10);
-            
-            displayHistory.forEach((game, index) => {
-                let formattedDate = 'Today';
-                try {
-                    const date = new Date(game.date);
-                    formattedDate = `${date.getMonth()+1}/${date.getDate()}/${date.getFullYear()}`;
-                } catch (e) {
-                    // Use fallback date
-                }
-                
-                const entryElement = document.createElement('div');
-                entryElement.className = 'history-entry';
-                entryElement.innerHTML = `
-                    Game ${index+1}: ${formattedDate} - 
-                    Time: ${game.formattedTime} - 
-                    Moves: ${game.moves} - 
-                    ${game.location}
-                `;
-                
-                historyList.appendChild(entryElement);
-            });
-        }
-        
-        // Create and render the game board
         function createGameBoard() {
-            // Get reference to the game board
-            const gameBoard = document.getElementById('game-board');
-            if (!gameBoard) return;
-            
-            // Clear the game board
-            gameBoard.innerHTML = '';
-            
-            // Create pairs of products
-            let gameProducts = [];
-            productPairs.forEach(product => {
-                // Add each product twice (to create pairs)
-                gameProducts.push(product);
-                gameProducts.push(product);
-            });
-            
-            // Shuffle the products
-            gameProducts = shuffleArray(gameProducts);
-            
-            // Limit to 50 cards (25 pairs) if there are more
-            gameProducts = gameProducts.slice(0, 50);
-            
-            // Create each card
-            gameProducts.forEach((product, index) => {
-                const card = document.createElement('div');
-                card.classList.add('card');
-                card.dataset.index = index;
-                card.dataset.product = product.id.toString();
-                
-                // Check if this is the CEO card
-                const isCEO = product.id === 25; // CEO Robert Pera is id 25
-                if (isCEO) {
-                    card.classList.add('ceo-card');
-                }
-                
-                // Use webp image files
-                const imagePath = `cards/${product.img}`;
-                
-                card.innerHTML = `
-                    <div class="card-inner">
-                        <div class="card-front">
-                            <img src="logo.svg" class="ubiquiti-logo" alt="Ubiquiti Logo">
-                        </div>
-                        <div class="card-back">
-                            <img src="${imagePath}" alt="Ubiquiti Product ${product.id}" style="max-width: 100%; max-height: 100%; object-fit: contain;">
-                        </div>
-                    </div>
-                `;
-                
-                card.addEventListener('click', handleCardClick);
-                gameBoard.appendChild(card);
+            gameBoard.innerHTML = ''; const { pairs, cols, rows } = currentDifficultyConfig; gameBoard.style.gridTemplateColumns = `repeat(${cols}, 1fr)`; gameBoard.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+            const ceoCard = allProductPairs.find(p => p.id === 25); const otherCards = allProductPairs.filter(p => p.id !== 25); const neededOtherCards = pairs - 1;
+            const shuffledOtherCards = otherCards.sort(() => 0.5 - Math.random()); const selectedProducts = [ceoCard, ...shuffledOtherCards.slice(0, neededOtherCards)];
+            let gameCards = [...selectedProducts, ...selectedProducts].sort(() => 0.5 - Math.random());
+            gameCards.forEach(product => {
+                const card = document.createElement('div'); card.classList.add('card'); card.dataset.productId = product.id; if (product.id === 25) card.classList.add('ceo-card');
+                card.innerHTML = `<div class="card-inner"><div class="card-front"><img src="logo.svg" class="ubiquiti-logo" alt="Logo"></div><div class="card-back"><img src="cards/${product.img}" alt="Produkt"></div></div>`;
+                card.addEventListener('click', handleCardClick); gameBoard.appendChild(card);
             });
         }
-        
-        // Handle card click
         function handleCardClick() {
-            const card = this;
-            
-            // Ignore clicks if:
-            // 1. Game is not active
-            // 2. Card is already flipped
-            // 3. This card is being compared
-            // 4. Processing is happening (global lock)
-            if (!gameActive || 
-                card.classList.contains('flipped') || 
-                card.classList.contains('comparing') ||
-                processingCards) {
-                return;
-            }
-            
-            // If two cards are already flipped but not yet processed
-            const comparingCards = document.querySelectorAll('.comparing');
-            if (comparingCards.length > 0) {
-                // Set processing flag
-                processingCards = true;
-                
-                // First clear the comparing cards
-                comparingCards.forEach(c => {
-                    c.classList.remove('flipped', 'comparing');
-                });
-                selectedCards = [];
-                
-                // Then flip this card after a short delay
-                setTimeout(() => {
-                    processingCards = false;
-                    flipCard(card);
-                }, 100);
-                return;
-            }
-            
-            // Normal flip case
-            flipCard(card);
-        }
-        
-        // Function to flip a card and handle its state
-        function flipCard(card) {
-            // Safety check - don't flip if we already have 2 cards
-            if (selectedCards.length >= 2) return;
-            
-            // Start the timer on first card flip if not already started
-            if (!gameStartTime && gameActive) {
-                startTimer();
-            }
-            
-            // Flip the card
-            card.classList.add('flipped');
-            selectedCards.push(card);
-            
-            // Check if CEO card was revealed
-            if (card.classList.contains('ceo-card')) {
-                playCEOEffect();
-            }
-            
-            // If we have 2 cards selected, check for a match
+            if (processingCards && selectedCards.length === 2) { clearTimeout(flipBackTimeoutId); selectedCards.forEach(c => c.classList.remove('flipped')); selectedCards = []; processingCards = false; }
+            if (!gameActive || processingCards || this.classList.contains('flipped')) return;
+            if (!startTime) { startTime = new Date(); }
+            const clickedCard = this; clickedCard.classList.add('flipped'); selectedCards.push(clickedCard);
             if (selectedCards.length === 2) {
-                // Set processing flag to prevent new card selections during processing
-                processingCards = true;
-                
-                // Increment move counter
-                moves++;
-                
-                const [card1, card2] = selectedCards;
-                
-                // Mark cards as being compared
-                card1.classList.add('comparing');
-                card2.classList.add('comparing');
-                
-                // Check if the cards match
-                if (card1.dataset.product === card2.dataset.product) {
-                    // Cards match!
+                processingCards = true; moves++; const [card1, card2] = selectedCards;
+                if (card1.dataset.productId === card2.dataset.productId) {
+                    pairsFound++; card1.removeEventListener('click', handleCardClick); card2.removeEventListener('click', handleCardClick);
                     setTimeout(() => {
-                        // Check if this is a CEO match
-                        if (card1.classList.contains('ceo-card')) {
-                            card1.querySelector('.card-back').classList.add('ceo-matched');
-                            card2.querySelector('.card-back').classList.add('ceo-matched');
-                            playCEOMatchEffect();
-                        } else {
-                            card1.querySelector('.card-back').classList.add('matched');
-                            card2.querySelector('.card-back').classList.add('matched');
-                        }
-                        
-                        // Remove comparison class
-                        card1.classList.remove('comparing');
-                        card2.classList.remove('comparing');
-                        
-                        // Remove click event listeners
-                        card1.removeEventListener('click', handleCardClick);
-                        card2.removeEventListener('click', handleCardClick);
-                        
-                        // Increment pairs found
-                        pairsFound++;
-                        
-                        // Check for victory
-                        if (pairsFound === totalPairs) {
+                        const back1 = card1.querySelector('.card-back'), back2 = card2.querySelector('.card-back');
+                        if (card1.classList.contains('ceo-card')) { back1.classList.add('ceo-matched'); back2.classList.add('ceo-matched'); spawnEmojiBalls(20); } else { back1.classList.add('matched'); back2.classList.add('matched'); }
+                        if (pairsFound === currentDifficultyConfig.pairs) {
+                            const endTime = new Date();
+                            const timeTaken = endTime - startTime;
                             gameActive = false;
-                            stopTimer();
-                            
-                            // Update scoreboard
-                            finalMovesElement.textContent = moves;
-                            finalTimeElement.textContent = formatTime(elapsedSeconds);
-                            
-                            // Save game to history
-                            saveGameToHistory();
-                            
-                            // Show victory message
-                            victoryMessage.style.display = 'block';
+                            showEndScreen(timeTaken);
                         }
-                        
-                        // Reset selected cards array and processing flag
-                        selectedCards = [];
-                        processingCards = false;
-                        
-                    }, 500);
+                        selectedCards = []; processingCards = false;
+                    }, 400);
                 } else {
-                    // Cards don't match, flip them back
-                    setTimeout(() => {
-                        card1.classList.remove('flipped', 'comparing');
-                        card2.classList.remove('flipped', 'comparing');
-                        
-                        // Reset selected cards array and processing flag
-                        selectedCards = [];
-                        processingCards = false;
-                        
-                    }, 1000);
+                    flipBackTimeoutId = setTimeout(() => { card1.classList.remove('flipped'); card2.classList.remove('flipped'); selectedCards = []; processingCards = false; }, 1000);
                 }
             }
         }
-        
-        // Special effect for CEO card reveal
-        function playCEOEffect() {
-            // Add any additional special effects here
-            console.log("CEO card revealed!");
+        function formatTime(milliseconds) {
+            const totalSeconds = Math.floor(milliseconds / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return `${minutes}m ${seconds}s`;
+        }
+        function showEndScreen(timeTaken) {
+            finalDifficultyEl.textContent = currentDifficultyKey;
+            finalTimeEl.textContent = formatTime(timeTaken);
+            gameContainer.classList.remove('active');
+            inGameUI.style.display = 'none';
+            setTimeout(() => endScreen.classList.add('active'), 300);
+        }
+        function startGame(difficultyKey) {
+            endScreen.classList.remove('active'); startScreen.classList.remove('active'); gameContainer.classList.add('active'); inGameUI.style.display = 'block';
+            currentDifficultyKey = difficultyKey;
+            currentDifficultyConfig = difficultyMap[difficultyKey];
+            moves = 0; pairsFound = 0; selectedCards = []; startTime = null;
+            createGameBoard(); gameActive = true; resizeGameBoard();
+        }
+        function returnToMenu() {
+            if (gameActive && pairsFound > 0) { if (!window.confirm("Opravdu chcete opustit hru? Váš postup bude ztracen.")) return; }
+            gameActive = false; currentDifficultyConfig = null; currentDifficultyKey = null;
+            gameContainer.classList.remove('active'); endScreen.classList.remove('active');
+            startScreen.classList.add('active'); inGameUI.style.display = 'none';
         }
         
-        // Special effect for CEO card match
-        function playCEOMatchEffect() {
-            // Add any additional special effects for a CEO match
-            console.log("CEO match found!");
-        }
-        
-        // Reset the game
-        function resetGame() {
-            // Reset game state
-            selectedCards = [];
-            moves = 0;
-            pairsFound = 0;
-            gameActive = true;
-            processingCards = false;
-            
-            // Stop and reset timer
-            stopTimer();
-            gameStartTime = null;
-            elapsedSeconds = 0;
-            
-            // Hide victory message
-            if (victoryMessage) {
-                victoryMessage.style.display = 'none';
-            }
-            
-            // Create a new game board
-            createGameBoard();
-            
-            // Adjust grid layout
-            adjustGridLayout();
-        }
-        
-        // Adjust grid layout based on screen dimensions
-        function adjustGridLayout() {
-            const gameBoard = document.getElementById('game-board');
-            if (!gameBoard) return;
-            
-            const windowWidth = window.innerWidth;
-            const windowHeight = window.innerHeight;
-            const aspectRatio = windowWidth / windowHeight;
-            
-            if (aspectRatio > 1.5) {
-                // Widescreen
-                gameBoard.style.gridTemplateColumns = 'repeat(10, 1fr)';
-                gameBoard.style.gridTemplateRows = 'repeat(5, 1fr)';
-            } else if (aspectRatio > 1) {
-                // Standard landscape
-                gameBoard.style.gridTemplateColumns = 'repeat(7, 1fr)';
-                gameBoard.style.gridTemplateRows = 'repeat(8, 1fr)';
-            } else if (aspectRatio > 0.75) {
-                // Nearly square
-                gameBoard.style.gridTemplateColumns = 'repeat(5, 1fr)';
-                gameBoard.style.gridTemplateRows = 'repeat(10, 1fr)';
-            } else {
-                // Portrait
-                gameBoard.style.gridTemplateColumns = 'repeat(4, 1fr)';
-                gameBoard.style.gridTemplateRows = 'repeat(13, 1fr)';
-            }
-        }
-        
-        // Add event listeners and initialize
-        function initGame() {
-            // Try to load game history
-            try {
-                loadGameHistory();
-            } catch (e) {
-                console.log('History feature unavailable');
-            }
-            
-            // Try to get player location
-            try {
-                getPlayerLocation();
-            } catch (e) {
-                console.log('Location feature unavailable');
-            }
-            
-            // Create the game board
-            createGameBoard();
-            
-            // Add an event listener for victory screen
-            const playAgainBtn = document.getElementById('play-again-btn');
-            if (playAgainBtn) {
-                playAgainBtn.addEventListener('click', resetGame);
-            }
-            
-            // Adjust grid layout based on screen dimensions
-            adjustGridLayout();
-            
-            // Listen for window resize and adjust grid
-            window.addEventListener('resize', adjustGridLayout);
-        }
-        
-        // Check if document is already loaded
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initGame);
-        } else {
-            initGame();
-        }
+        document.querySelectorAll('.difficulty-options .btn').forEach(b => b.addEventListener('click', () => startGame(b.dataset.difficulty)));
+        exitGameBtn.addEventListener('click', returnToMenu);
+        playAgainBtn.addEventListener('click', () => startGame(currentDifficultyKey));
+        mainMenuBtn.addEventListener('click', returnToMenu);
+        window.addEventListener('resize', resizeGameBoard);
     </script>
 </body>
 </html>
